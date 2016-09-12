@@ -6,7 +6,7 @@
 
 (enable-console-print!)
 
-(println "This text is printed from src/livewator/core.cljs. Go ahead and edit it and see reloading in action.")
+;;(println "This text is printed from src/livewator/core.cljs. Go ahead and edit it and see reloading in action.")
 
 ;; define your app data so that it doesn't get over-written on reload
 
@@ -26,8 +26,17 @@
 
 (def PLAYFIELD-WIDTH 30)
 (def PLAYFIELD-HEIGHT 20)
+(def COLORI-PESCI ["#0000ff" "#000088"])
+(def COLORI-SQUALI [])
 
-(defonce app-state (atom {:pf (empty-playfield PLAYFIELD-WIDTH PLAYFIELD-HEIGHT)}))
+
+(defonce app-state (atom
+      {:pf (empty-playfield PLAYFIELD-WIDTH PLAYFIELD-HEIGHT)
+       :turn 0
+       :n_pesci '(0)
+       :n_squali '(0)
+       :loop_ms  '(0)
+       }))
 
 
 ; ==========================================================
@@ -75,11 +84,13 @@
 ; defn animali
 (defn crea-nuovo-pesce []
   {:tipo    :PESCE
+   :colore  (rand-nth COLORI-PESCI)
    :energia 0
    :turns   0})
 
 (defn crea-nuovo-squalo []
   {:tipo    :SQUALO
+   :colore  (rand-nth COLORI-SQUALI)
    :energia 0
    :turns   0})
 
@@ -140,7 +151,7 @@
 
 (defn avanza-gioco-cella [celle rc]
   (doall
-     (println "Celle " rc " - " celle)
+     ;(println "Celle " rc " - " celle)
      (let [animale (get-in celle rc)
            turni   (:turns animale)]
        (if (pos? turni)
@@ -162,11 +173,44 @@
 
 (defn avanza-gioco [celle]
   (let [celle-con-turni (reduce aggiunge-1-turno celle (coordinate-gioco))]
+     (reduce avanza-gioco-cella celle-con-turni (coordinate-gioco) )))
 
 
-  (reduce avanza-gioco-cella celle-con-turni (coordinate-gioco) )))
+(defn join-val [dict chiave valore]
+  (let [v0 (conj (get-in dict [chiave]) valore)]
+    (assoc-in dict [chiave] v0)
+  ))
+
+(defn conta-celle
+  "Restituisce un hash con tutte le celle per tipo"
+  [celle]
+  (reduce #(update-in %1 [%2] inc) {:PESCE 0 :SQUALO 0}
+    (for [rc (coordinate-gioco)]
+      (:tipo (get-in celle rc)))))
 
 
+
+
+(defn run-turno-gioco
+  "Questo metodo è chiamato dal bottone"
+  []
+  (let [t0 (.getTime (js/Date.))
+        new-cells (avanza-gioco (:pf @app-state))
+        tipi-celle (conta-celle new-cells)
+        ;x (println "TC:" tipi-celle)
+        t1 (.getTime (js/Date.))
+        dur (- t1 t0)]
+    (do
+      (imposta-campo-di-gioco new-cells)
+      (swap! app-state update-in [:turn] inc)
+      (swap! app-state join-val :n_pesci (:PESCE tipi-celle))
+      (swap! app-state join-val :n_squali (:SQUALO tipi-celle))
+      (swap! app-state join-val :loop_ms dur)
+
+
+     )
+
+  ))
 
 
 
@@ -178,7 +222,7 @@
 
 (defmethod plot-cell :PESCE
   [data]
-  [:td (str "P" (:energia data))] )
+  [:td  (str "P" (:energia data)) ] )
 
 (defmethod plot-cell :SQUALO
   [data]
@@ -226,12 +270,9 @@
 
     ]]
 
-    [:input {:type "button" :value (str "Avanza #" (:turn @app-state))
-            :on-click
-             #(doall
-                (imposta-campo-di-gioco
-                  (avanza-gioco (:pf @app-state) ))
-                (swap! app-state update-in [:turn] inc))  }]
+    [:input {:type "button"
+             :value (str "Avanza #" (:turn @app-state))
+             :on-click run-turno-gioco }]
 
     [:input {:type "button" :value "Reset!"
             :on-click
@@ -246,6 +287,13 @@
                 (imposta-animale (:pf @app-state) [1 1] (crea-nuovo-pesce))) }]
 
      [:br ]
+
+     (str "Pesci: " (first (:n_pesci @app-state))
+          " - Squali: " (first (:n_squali @app-state))
+          " - Loop: " (first (:loop_ms @app-state)) "ms"
+
+     )
+
      ;[:pre (str @app-state)]
 
 
