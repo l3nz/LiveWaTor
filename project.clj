@@ -12,7 +12,7 @@
                   :exclusions [org.clojure/tools.reader]]
                  [reagent "0.5.1"]]
 
-  :plugins [[lein-figwheel "0.5.4-7"]
+  :plugins [ [lein-figwheel "0.5.4-7"]
             [lein-cljsbuild "1.1.3" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
