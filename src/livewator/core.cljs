@@ -24,10 +24,11 @@
   (buildrow h (buildrow w nil))
 )
 
+(def TIPI-PESCI [:PESCE1 :PESCE2 :PESCE3])
+(def TIPI-SQUALI [:SQUALO1 :SQUALO2 :SQUALO3])
+
 (def PLAYFIELD-WIDTH 30)
 (def PLAYFIELD-HEIGHT 20)
-(def COLORI-PESCI ["#0000ff" "#000088"])
-(def COLORI-SQUALI [])
 
 
 (defonce app-state (atom
@@ -84,14 +85,14 @@
 ; defn animali
 (defn crea-nuovo-pesce []
   {:tipo    :PESCE
-   :colore  (rand-nth COLORI-PESCI)
+   :colore  (rand-nth TIPI-PESCI)
    :energia 0
    :turns   0})
 
 (defn crea-nuovo-squalo []
   {:tipo    :SQUALO
-   :colore  (rand-nth COLORI-SQUALI)
-   :energia 0
+   :colore  (rand-nth TIPI-SQUALI)
+   :energia 10
    :turns   0})
 
 (defn imposta-campo-di-gioco [celle]
@@ -103,10 +104,21 @@
 (defn incrementa-energia [animale]
   (update-in animale [:energia] inc))
 
+(defn decrementa-energia [animale]
+  (update-in animale [:energia] dec))
+
+
 (defn cella-vuota? [celle rc]
   (if (nil? (get-in celle rc))
     true
     false))
+
+(defn cella-con-pesce? [celle rc]
+  (if (= :PESCE (:tipo (get-in celle rc)))
+    rc
+    false))
+
+
 
 (defn imposta-animale [celle [r c] animale]
   (if (nil? animale)
@@ -115,6 +127,12 @@
       (assoc-in celle [r c] animale-decrementa)
     )))
 
+(defn muovi-animale [celle rc1 animale1 rc2 animale2]
+  (-> celle
+      (imposta-animale rc1 animale1)
+      (imposta-animale rc2 animale2)))
+
+
 
 (defmulti avanza-animale
   (fn [celle [r c] animale] (:tipo animale)))
@@ -122,6 +140,11 @@
 (defmethod avanza-animale nil
   [celle [r c] animale]
   celle)
+
+; ===============================================================
+; PESCI
+
+
 
 (defn figlia-pesce
   "Restituisce il pesce padre e l'eventuale figlio, oppure nil"
@@ -145,9 +168,54 @@
        celle
       )))
 
+
+; ==============================================================
+; SQUALI
+; - decrementa energia
+; - ci sono pesci nelle celle adiacenti? se si mangia
+;  - se mangia, ha abbastanza energia per il piccolino?
+; - muove a caso se possibile muovere
+; - se energia < 0 muore
+
+(defn pesce-adiacente? [rc celle]
+  (let [celle-da-guardare (map #(nuovopunto rc %) [:SU :GIU :SX :DX :SUSX :GSX :SUDX :GDX])
+        celle-con-pesci (filter #(cella-con-pesce? celle %) celle-da-guardare)
+        ]
+      (cond
+        (pos? (count celle-con-pesci))  (rand-nth celle-con-pesci)
+        :else                           nil
+
+      )))
+
+
 (defmethod avanza-animale :SQUALO
   [celle [r c] animale]
-  celle)
+  (let [squalo (decrementa-energia animale)
+        rc-pesce (pesce-adiacente? [r c] celle)]
+
+    (if rc-pesce
+      ; mangio un pesce
+      (let [squalo-grasso (incrementa-energia animale)]
+        (muovi-animale celle
+            rc-pesce squalo-grasso
+            [r c]    nil)
+
+        )
+
+
+      ; nulla da mangiare
+      (let [nuovacella (nuovopunto [r c] (mossa-casuale))]
+        (if (cella-vuota? celle nuovacella)
+          (muovi-animale celle
+              nuovacella squalo
+              [r c]      nil)
+
+          celle)))))
+
+
+
+
+
 
 (defn avanza-gioco-cella [celle rc]
   (doall
@@ -222,11 +290,11 @@
 
 (defmethod plot-cell :PESCE
   [data]
-  [:td  (str "P" (:energia data)) ] )
+  [:td {:class (name (:colore data))}  (str "P" (:energia data)) ] )
 
 (defmethod plot-cell :SQUALO
   [data]
-  [:td "@"] )
+  [:td {:class (name (:colore data))}  (str "<" (:energia data)) ] )
 
 (defmethod plot-cell nil
   [data]
@@ -281,10 +349,16 @@
                 (swap! app-state assoc-in [:turn] 0))     }]
 
 
-    [:input {:type "button" :value "Pesce 1 1"
+    [:input {:type "button" :value "Pesce 1,1"
             :on-click
              #(imposta-campo-di-gioco
                 (imposta-animale (:pf @app-state) [1 1] (crea-nuovo-pesce))) }]
+
+     [:input {:type "button" :value "Squalo 8,8"
+            :on-click
+             #(imposta-campo-di-gioco
+                (imposta-animale (:pf @app-state) [8 8] (crea-nuovo-squalo))) }]
+
 
      [:br ]
 
