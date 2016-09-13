@@ -15,9 +15,15 @@ References:
 
     lein figwheel
 
+### Running tests
+
+To be understood - see https://github.com/emezeske/lein-cljsbuild/blob/master/doc/TESTING.md
+
+    lein cljsbuild test
+
 ### Compile for production
 
-tbd
+    lein clean; lein cljsbuild once min
 
 ### Pretty-printing code
 
