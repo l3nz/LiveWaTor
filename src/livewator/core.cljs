@@ -11,18 +11,17 @@
 ;; define your app data so that it doesn't get over-written on reload
 
 
+
 (defn buildrow
   "Crea una vettore riga di n elementi ripetuti
    Serve per inizializzare il campo da gioco."
   [n-items value]
   (vec (repeat n-items value)))
 
-
 (defn empty-playfield
   "Crea un campo da gioco vuoto; matrice w*h di elementi nil"
   [w h]
-  (buildrow h (buildrow w nil))
-)
+  (buildrow h (buildrow w nil)))
 
 (def TIPI-PESCI [:PESCE1 :PESCE2 :PESCE3])
 (def TIPI-SQUALI [:SQUALO1 :SQUALO2 :SQUALO3])
@@ -59,6 +58,8 @@
    :GDX  [ 1  1]
 })
 
+(def DIREZIONI (keys MOSSE))
+
 (defn somma-circolare [pos offset massimo]
   (let [p (+ pos offset)
         m (dec massimo)]
@@ -78,9 +79,7 @@
 
 
 (defn mossa-casuale []
-  (rand-nth [:SU :GIU :SX :DX :SUSX :GSX :SUDX :GDX])
-  ;:DX
-  )
+  (rand-nth DIREZIONI))
 
 ; defn animali
 (defn crea-nuovo-pesce []
@@ -178,14 +177,12 @@
 ; - se energia < 0 muore
 
 (defn pesce-adiacente? [rc celle]
-  (let [celle-da-guardare (map #(nuovopunto rc %) [:SU :GIU :SX :DX :SUSX :GSX :SUDX :GDX])
-        celle-con-pesci (filter #(cella-con-pesce? celle %) celle-da-guardare)
-        ]
-      (cond
-        (pos? (count celle-con-pesci))  (rand-nth celle-con-pesci)
-        :else                           nil
+  (let [celle-da-guardare (map #(nuovopunto rc %) DIREZIONI)
+        celle-con-pesci (filter #(cella-con-pesce? celle %) celle-da-guardare)]
 
-      )))
+    (cond
+      (pos? (count celle-con-pesci))  (rand-nth celle-con-pesci)
+      :else                           nil)))
 
 
 (defmethod avanza-animale :SQUALO
@@ -197,23 +194,16 @@
       ; mangio un pesce
       (let [squalo-grasso (incrementa-energia animale)]
         (muovi-animale celle
-            rc-pesce squalo-grasso
-            [r c]    nil)
-
-        )
-
+                       rc-pesce squalo-grasso
+                       [r c]    nil))
 
       ; nulla da mangiare
       (let [nuovacella (nuovopunto [r c] (mossa-casuale))]
         (if (cella-vuota? celle nuovacella)
           (muovi-animale celle
-              nuovacella squalo
-              [r c]      nil)
-
+                         nuovacella squalo
+                         [r c]      nil)
           celle)))))
-
-
-
 
 
 
@@ -246,18 +236,14 @@
 
 (defn join-val [dict chiave valore]
   (let [v0 (conj (get-in dict [chiave]) valore)]
-    (assoc-in dict [chiave] v0)
-  ))
+    (assoc-in dict [chiave] v0)))
 
 (defn conta-celle
   "Restituisce un hash con tutte le celle per tipo"
   [celle]
   (reduce #(update-in %1 [%2] inc) {:PESCE 0 :SQUALO 0}
-    (for [rc (coordinate-gioco)]
-      (:tipo (get-in celle rc)))))
-
-
-
+          (for [rc (coordinate-gioco)]
+            (:tipo (get-in celle rc)))))
 
 (defn run-turno-gioco
   "Questo metodo è chiamato dal bottone"
@@ -273,12 +259,7 @@
       (swap! app-state update-in [:turn] inc)
       (swap! app-state join-val :n_pesci (:PESCE tipi-celle))
       (swap! app-state join-val :n_squali (:SQUALO tipi-celle))
-      (swap! app-state join-val :loop_ms dur)
-
-
-     )
-
-  ))
+      (swap! app-state join-val :loop_ms dur))))
 
 
 
@@ -320,62 +301,62 @@
 
 
 (defn plot-playfield []
+
   [:div
 
   [:table.table.table-striped.table-bordered
-   {:cell-spacing "0" }
+   {:cell-spacing "0"}
 
    [:thead>tr
-     [:td {:width "20px"} "-" ]
-     (map #(vec [:th {:width "20px"} (str %)]) (range PLAYFIELD-WIDTH))
-    ]
+    [:td {:width "20px"} "-"]
+    (map #(vec [:th {:width "20px"} (str %)]) (range PLAYFIELD-WIDTH))]
 
    [:tbody
 
     (let [table (:pf @app-state)]
       (for [row (range PLAYFIELD-HEIGHT)]
-        (plot-row row (get table row))))
+        (plot-row row (get table row)))) ]]
 
-    ]]
+  ;; BOTTONI
 
-    [:input {:type "button"
+  (str "Pesci: " (first (:n_pesci @app-state))
+          " - Squali: " (first (:n_squali @app-state))
+          " - Loop: " (first (:loop_ms @app-state)) "ms")
+
+  [:br]
+
+  [:input {:type "button"
              :value (str "Avanza #" (:turn @app-state))
-             :on-click run-turno-gioco }]
+             :on-click run-turno-gioco}]
 
-    [:input {:type "button" :value "Reset!"
-            :on-click
-             #(doall
-                (imposta-campo-di-gioco (empty-playfield PLAYFIELD-WIDTH PLAYFIELD-HEIGHT))
-                (swap! app-state assoc-in [:turn] 0))     }]
-
+  [:input {:type "button" :value "Reset!"
+     :on-click
+     #(doall
+       (imposta-campo-di-gioco (empty-playfield PLAYFIELD-WIDTH PLAYFIELD-HEIGHT))
+       (swap! app-state assoc-in [:turn] 0))}]
 
     [:input {:type "button" :value "Pesce 1,1"
-            :on-click
-             #(imposta-campo-di-gioco
-                (imposta-animale (:pf @app-state) [1 1] (crea-nuovo-pesce))) }]
+     :on-click
+     #(imposta-campo-di-gioco
+       (imposta-animale (:pf @app-state) [1 1] (crea-nuovo-pesce)))}]
 
      [:input {:type "button" :value "Squalo 8,8"
-            :on-click
-             #(imposta-campo-di-gioco
-                (imposta-animale (:pf @app-state) [8 8] (crea-nuovo-squalo))) }]
+      :on-click
+      #(imposta-campo-di-gioco
+        (imposta-animale (:pf @app-state) [8 8] (crea-nuovo-squalo)))}]
 
 
-     [:br ]
+  ]
 
-     (str "Pesci: " (first (:n_pesci @app-state))
-          " - Squali: " (first (:n_squali @app-state))
-          " - Loop: " (first (:loop_ms @app-state)) "ms"
 
-     )
+
+
+
+  )
 
      ;[:pre (str @app-state)]
 
 
-
-     ]
-
-
-  )
 
 
 (reagent/render-component [plot-playfield]
