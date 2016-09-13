@@ -11,8 +11,15 @@ References:
 
 ## Dev env
 
+### Running
 
+    lein figwheel
 
-lein figwheel
+### Compile for production
 
+tbd
+
+### Pretty-printing code
+
+* http://pretty-print.net/ ma fai attenzione
 
