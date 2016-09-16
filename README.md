@@ -17,6 +17,13 @@ References:
 
 ### Running tests
 
+As running tests in JavaScript is complex and sucks, the model is defined as a 
+.cljc class, so we can test int from  the JVM side of things.
+
+	lein test
+
+#### Tests in ClojureScript
+
 To be understood - see https://github.com/emezeske/lein-cljsbuild/blob/master/doc/TESTING.md
 
     lein cljsbuild test
