@@ -60,18 +60,21 @@
 ; Plots the playfield, it is a table of size w*h
 ;
 
-(defmulti plot-cell (fn [data] (:tipo data)))
+(defmulti plot-cell (fn [data _] (:tipo data)))
 
 (defmethod plot-cell :PESCE
-  [data]
+  [data idx]
+  ^{:key idx}
   [:td {:class (name (:colore data))}  (str "P" (:energia data)) ] )
 
 (defmethod plot-cell :SQUALO
-  [data]
-  [:td {:class (name (:colore data))}  (str "x<" (:energia data)) ] )
+  [data idx]
+   ^{:key idx}
+   [:td {:class (name (:colore data))}  (str "<" (:energia data)) ] )
 
 (defmethod plot-cell nil
-  [data]
+  [data idx]
+  ^{:key idx}
   [:td ""] )
 
 
@@ -86,8 +89,9 @@
   [nrow rowdata]
 
   ^{:key (str "r-" nrow)} [:tr
-    [:td (str nrow)]
-    (map plot-cell rowdata)
+    ^{:key "0"} [:td  (str nrow)]
+    ;(map plot-cell rowdata)
+    (map-indexed (fn [idx itm] (plot-cell itm (str idx))) rowdata)
     ]
   )
 
@@ -101,8 +105,8 @@
    {:cell-spacing "0"}
 
    [:thead>tr
-    [:td {:width "20px"} "-"]
-    (map #(vec [:th {:width "20px"} (str %)]) (range m/PLAYFIELD-WIDTH))]
+    [:th {:width "20px"} "-"]
+    (map #(vec  [:th {:key (str %) :width "20px"} (str %)]) (range m/PLAYFIELD-WIDTH))]
 
    [:tbody
 
