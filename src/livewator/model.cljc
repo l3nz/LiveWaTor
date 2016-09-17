@@ -2,12 +2,25 @@
 
 ;; COSTANTI
 
-(def TIPI-PESCI [:PESCE1 :PESCE2 :PESCE3])
-(def TIPI-SQUALI [:SQUALO1 :SQUALO2 :SQUALO3])
+(def IMG-PESCI {
+    :PESCE1 {:pic "Pesce1.jpg"  :squalo? false}
+    :PESCE2 {:pic "Pesce2.jpg"  :squalo? false}
+    :PESCE3 {:pic "Pesce3.jpg"  :squalo? false}
+    :PESCE4 {:pic "Pesce4.jpg"  :squalo? false}
+
+    :SQUALO1 {:pic "Squalo1.jpg" :squalo? true}
+    :SQUALO2 {:pic "Squalo2.jpg" :squalo? true}
+    :SQUALO3 {:pic "Squalo3.jpg" :squalo? true}
+    :SQUALO4 {:pic "Squalo4.jpg" :squalo? true}
+
+})
+
+
+(def TIPI-PESCI  (map first (filter #(= false (:squalo? (last %))) IMG-PESCI)))
+(def TIPI-SQUALI (map first (filter #(= true  (:squalo? (last %))) IMG-PESCI)))
 
 (def PLAYFIELD-WIDTH 30)
-(def PLAYFIELD-HEIGHT 20)
-
+(def PLAYFIELD-HEIGHT 15)
 
 (def MOSSE {
    :SU   [-1  0]
@@ -21,6 +34,13 @@
 })
 
 (def DIREZIONI (keys MOSSE))
+
+
+(def SQUALO-RIPRODUCE 30)
+(def SQUALO-NASCITA   15)
+(def PESCE-RIPRODUCE   5)
+(def PESCE-NASCITA     1)
+
 
 
 ;
@@ -39,6 +59,9 @@
   [w h]
   (buildrow h (buildrow w nil)))
 
+(defn empty-default-playfield
+    []
+  (empty-playfield PLAYFIELD-WIDTH PLAYFIELD-HEIGHT))
 
 
 
@@ -75,17 +98,25 @@
 (defn crea-nuovo-pesce []
   {:tipo    :PESCE
    :colore  (rand-nth TIPI-PESCI)
-   :energia 0
+   :energia PESCE-NASCITA
    :turns   0})
 
 (defn crea-nuovo-squalo []
   {:tipo    :SQUALO
    :colore  (rand-nth TIPI-SQUALI)
-   :energia 10
+   :energia SQUALO-NASCITA
    :turns   0})
 
 (defn setta-energia [animale value]
   (assoc-in animale [:energia] value))
+
+
+(defn energia+ [animale delta-energia]
+  (let [energia-corr (:energia animale)
+        energia-nuova (+ energia-corr delta-energia)]
+    (setta-energia animale energia-nuova)))
+
+
 
 (defn incrementa-energia [animale]
   (update-in animale [:energia] inc))
@@ -94,13 +125,20 @@
   (update-in animale [:energia] dec))
 
 
+(defn leggi-cella [celle rc]
+  (get-in celle rc))
+
 (defn cella-vuota? [celle rc]
-  (if (nil? (get-in celle rc))
-    true
-    false))
+  (nil? (leggi-cella celle rc)))
+
+(defn leggi-energia [celle rc]
+  (:energia (leggi-cella celle rc)))
+
+(defn leggi-tipo [celle rc]
+  (:tipo (leggi-cella celle rc)))
 
 (defn cella-con-pesce? [celle rc]
-  (if (= :PESCE (:tipo (get-in celle rc)))
+  (if (= :PESCE (leggi-tipo celle rc))
     rc
     false))
 
@@ -133,7 +171,7 @@
 (defn figlia-pesce
   "Restituisce il pesce padre e l'eventuale figlio, oppure nil"
   [padre]
-  (if (> 5 (:energia padre))
+  (if (> PESCE-RIPRODUCE (:energia padre))
     [padre nil]
     [(setta-energia padre 0) (crea-nuovo-pesce)]))
 
@@ -171,24 +209,42 @@
 
 
 (defmethod avanza-animale :SQUALO
-  [celle [r c] animale]
+  [celle rc animale]
   (let [squalo (decrementa-energia animale)
-        rc-pesce (pesce-adiacente? [r c] celle)]
+        rc-pesce (pesce-adiacente? rc celle)]
 
     (if rc-pesce
       ; mangio un pesce
-      (let [squalo-grasso (incrementa-energia animale)]
-        (muovi-animale celle
+      (let [energia-pesce (leggi-energia celle rc-pesce)
+            squalo-grasso (energia+ animale energia-pesce)]
+
+        (if (> (:energia squalo-grasso) SQUALO-RIPRODUCE)
+          ;; SI RIPRODUCE
+          (let [squalo-padre (energia+ squalo-grasso (* -1 SQUALO-NASCITA))
+                squalo-figlio (crea-nuovo-squalo)]
+            (muovi-animale celle
+                       rc-pesce squalo-padre
+                       rc       squalo-figlio))
+
+          ;; NON SI RIPRODUCE
+          (muovi-animale celle
                        rc-pesce squalo-grasso
-                       [r c]    nil))
+                       rc    nil)))
 
       ; nulla da mangiare
-      (let [nuovacella (nuovopunto [r c] (mossa-casuale))]
-        (if (cella-vuota? celle nuovacella)
-          (muovi-animale celle
-                         nuovacella squalo
-                         [r c]      nil)
-          celle)))))
+      (if (< 0 (:energia squalo))
+        ;; provo a muovermi
+        (let [nuovacella (nuovopunto rc (mossa-casuale))]
+          (if (cella-vuota? celle nuovacella)
+            ;; mi posso muovere
+            (muovi-animale celle
+                           nuovacella squalo
+                           rc         nil)
+            ;; non mi posso muovere
+            celle))
+        ; Squalo morto - bye bye
+        (imposta-animale celle rc nil)
+))))
 
 
 

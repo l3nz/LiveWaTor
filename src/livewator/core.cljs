@@ -1,6 +1,6 @@
 (ns livewator.core
   (:require [reagent.core :as reagent :refer [atom]]
-            [cljs.test :refer-macros [deftest is testing run-tests]]
+            ;[cljs.test :refer-macros [deftest is testing run-tests]]
             [livewator.model :as m]
             ))
 
@@ -18,7 +18,7 @@
 
 
 (defonce app-state (atom
-      {:pf (m/empty-playfield m/PLAYFIELD-WIDTH m/PLAYFIELD-HEIGHT)
+      {:pf (m/empty-default-playfield)
        :turn 0
        :n_pesci '(0)
        :n_squali '(0)
@@ -60,22 +60,57 @@
 ; Plots the playfield, it is a table of size w*h
 ;
 
+(defn plot-pesce
+  "Dato un tipo di pesce, la colonna (per react) e la
+   quantità di energia corrente, disegna il pesce"
+  [tipo react-idx energia-possibile commento]
+
+  (let [min-size 15
+        max-size 24
+        size-px (int (+ (* (- max-size min-size) energia-possibile) min-size))
+        size (str size-px "px")
+        pic (get-in m/IMG-PESCI [tipo :pic])]
+
+
+  [:td
+    {:key react-idx
+     :class "cella"}
+    [:img {:src  (str "./img/" pic)
+           :style {:width size :height size}
+           :title commento}]
+   ]
+
+  ))
+
+
+
+
 (defmulti plot-cell (fn [data _] (:tipo data)))
 
 (defmethod plot-cell :PESCE
   [data idx]
-  ^{:key idx}
-  [:td {:class (name (:colore data))}  (str "P" (:energia data)) ] )
+;;  ^{:key idx}
+;;  [:td {:class (name (:colore data))}  (str "P" (:energia data)) ] )
+  (plot-pesce (:colore data)
+              idx
+              (/ (:energia data) 5)
+              (str "P:" (:energia data)))
+  )
 
 (defmethod plot-cell :SQUALO
   [data idx]
-   ^{:key idx}
-   [:td {:class (name (:colore data))}  (str "<" (:energia data)) ] )
+;;   ^{:key idx}
+;;   [:td {:class (name (:colore data))}  (str "<" (:energia data)) ] )
+  (plot-pesce (:colore data)
+              idx
+              (/ (:energia data) 15)
+              (str "S:" (:energia data)))
+
+  )
 
 (defmethod plot-cell nil
   [data idx]
-  ^{:key idx}
-  [:td ""] )
+  [:td {:key idx :class "cella"} ""] )
 
 
 ;(defn plot-cell [data]
@@ -129,7 +164,7 @@
   [:input {:type "button" :value "Reset!"
      :on-click
      #(doall
-       (imposta-campo-di-gioco (m/empty-playfield m/PLAYFIELD-WIDTH m/PLAYFIELD-HEIGHT))
+       (imposta-campo-di-gioco (m/empty-default-playfield))
        (swap! app-state assoc-in [:turn] 0))}]
 
     [:input {:type "button" :value "Pesce 1,1"
@@ -143,13 +178,7 @@
         (m/imposta-animale (:pf @app-state) [8 8] (m/crea-nuovo-squalo)))}]
 
 
-  ]
-
-
-
-
-
-  )
+  ])
 
 
 
