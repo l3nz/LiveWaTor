@@ -136,32 +136,17 @@
 
   [:div
 
-  [:table.table.table-striped.table-bordered
-   {:cell-spacing "0"}
-
-   [:thead>tr
-    [:th {:width "20px"} "-"]
-    (map #(vec  [:th {:key (str %) :width "20px"} (str %)]) (range m/PLAYFIELD-WIDTH))]
-
-   [:tbody
-
-    (let [table (:pf @app-state)]
-      (for [row (range m/PLAYFIELD-HEIGHT)]
-        (plot-row row (get table row)))) ]]
-
-  ;; BOTTONI
-
-  (str "Pesci: " (first (:n_pesci @app-state))
-          " - Squali: " (first (:n_squali @app-state))
-          " - Loop: " (first (:loop_ms @app-state)) "ms")
-
-  [:br]
-
-  [:input {:type "button"
+    [:input {:type "button"
              :value (str "Avanza #" (:turn @app-state))
              :on-click run-turno-gioco}]
 
-  [:input {:type "button" :value "Reset!"
+   (str "Pesci: " (first (:n_pesci @app-state))
+          " - Squali: " (first (:n_squali @app-state))
+          " - Loop: " (first (:loop_ms @app-state)) "ms")
+
+
+
+    [:input {:type "button" :value "Reset!"
      :on-click
      #(doall
        (imposta-campo-di-gioco (m/empty-default-playfield))
@@ -176,6 +161,24 @@
       :on-click
       #(imposta-campo-di-gioco
         (m/imposta-animale (:pf @app-state) [8 8] (m/crea-nuovo-squalo)))}]
+
+
+
+  [:table.table.table-striped.table-bordered
+   {:cell-spacing "0"}
+
+   [:thead>tr
+    [:th {:width "20px"} "-"]
+    (map #(vec  [:th {:key (str %) :width "20px"} (str %)]) (range m/PLAYFIELD-WIDTH))]
+
+   [:tbody
+
+    (let [table (:pf @app-state)]
+      (for [row (range m/PLAYFIELD-HEIGHT)]
+        (plot-row row (get table row)))) ]]
+
+
+
 
 
   ])

@@ -36,9 +36,9 @@
 (def DIREZIONI (keys MOSSE))
 
 
-(def SQUALO-RIPRODUCE 30)
-(def SQUALO-NASCITA   15)
-(def PESCE-RIPRODUCE   5)
+(def SQUALO-RIPRODUCE 40)
+(def SQUALO-NASCITA   25)
+(def PESCE-RIPRODUCE   2)
 (def PESCE-NASCITA     1)
 
 
@@ -137,10 +137,13 @@
 (defn leggi-tipo [celle rc]
   (:tipo (leggi-cella celle rc)))
 
-(defn cella-con-pesce? [celle rc]
-  (if (= :PESCE (leggi-tipo celle rc))
+(defn cella-con-animale? [tipo-animale celle rc]
+  (if (= tipo-animale (leggi-tipo celle rc))
     rc
     false))
+
+(defn cella-con-pesce? [celle rc]
+  (cella-con-animale? :PESCE celle rc))
 
 (defn imposta-animale [celle [r c] animale]
   (if (nil? animale)
@@ -199,19 +202,27 @@
 ; - muove a caso se possibile muovere
 ; - se energia < 0 muore
 
-(defn pesce-adiacente? [rc celle]
+(defn pesce-adiacente? [tipo-pesce rc celle]
   (let [celle-da-guardare (map #(nuovopunto rc %) DIREZIONI)
-        celle-con-pesci (filter #(cella-con-pesce? celle %) celle-da-guardare)]
+        celle-con-pesci (filter #(cella-con-animale? tipo-pesce celle %) celle-da-guardare)]
 
     (cond
       (pos? (count celle-con-pesci))  (rand-nth celle-con-pesci)
       :else                           nil)))
 
+(defn pesce-o-squalo-adiacente? [rc celle]
+  (let [pesce-adiacente (pesce-adiacente? :PESCE rc celle)
+        squalo-adiacente (pesce-adiacente? :PESCE rc celle)]
+    (if (nil? pesce-adiacente)
+      squalo-adiacente
+      pesce-adiacente)))
+
+
 
 (defmethod avanza-animale :SQUALO
   [celle rc animale]
   (let [squalo (decrementa-energia animale)
-        rc-pesce (pesce-adiacente? rc celle)]
+        rc-pesce (pesce-o-squalo-adiacente? rc celle)]
 
     (if rc-pesce
       ; mangio un pesce
